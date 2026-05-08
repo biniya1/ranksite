@@ -23,7 +23,7 @@ function App() {
   const [tag, setTag] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API_URL = 'http://localhost:8000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const fetchLocalRankings = async () => {
     try {
