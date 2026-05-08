@@ -8,5 +8,10 @@ class User(Base):
     nickname = Column(String, index=True)
     tag = Column(String, index=True)
     score = Column(Integer, default=0)
+    max_score = Column(Integer, default=0)
+    tier = Column(String, default="UNKNOWN")
+    rank = Column(String, default="")
+    max_tier = Column(String, default="UNKNOWN")
+    max_rank = Column(String, default="")
 
     __table_args__ = (UniqueConstraint('nickname', 'tag', name='_nickname_tag_uc'),)

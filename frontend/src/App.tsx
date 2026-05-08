@@ -6,31 +6,59 @@ interface User {
   nickname: string;
   tag: string;
   score: number;
+  max_score: number;
+  tier: string;
+  rank: string;
+  max_tier: string;
+  max_rank: string;
 }
 
+type Tab = 'local' | 'global' | 'update';
+
 function App() {
-  const [rankings, setRankings] = useState<User[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('local');
+  const [localRankings, setLocalRankings] = useState<User[]>([]);
+  const [globalRankings, setGlobalRankings] = useState<User[]>([]);
   const [nickname, setNickname] = useState('');
   const [tag, setTag] = useState('');
   const [loading, setLoading] = useState(false);
 
   const API_URL = 'http://localhost:8000';
 
-  const fetchRankings = async () => {
+  const fetchLocalRankings = async () => {
     try {
       const response = await fetch(`${API_URL}/rankings`);
       if (response.ok) {
         const data = await response.json();
-        setRankings(data);
+        setLocalRankings(data);
       }
     } catch (error) {
-      console.error('Failed to fetch rankings:', error);
+      console.error('Failed to fetch local rankings:', error);
+    }
+  };
+
+  const fetchGlobalRankings = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/global-rankings`);
+      if (response.ok) {
+        const data = await response.json();
+        setGlobalRankings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch global rankings:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRankings();
-  }, []);
+    if (activeTab === 'local') {
+      fetchLocalRankings();
+    } else if (activeTab === 'global') {
+      fetchGlobalRankings();
+    }
+  }, [activeTab]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +80,8 @@ function App() {
       if (response.ok) {
         setNickname('');
         setTag('');
-        fetchRankings();
+        await fetchLocalRankings();
+        setActiveTab('local'); // Switch to local leaderboard after update
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.detail || 'Failed to register user'}`);
@@ -65,59 +94,126 @@ function App() {
     }
   };
 
+  const renderRankingTable = (data: User[], isGlobal: boolean) => (
+    <div className="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Summoner</th>
+            <th>Tier</th>
+            <th>Current LP</th>
+            {!isGlobal && <th>Season High</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((user, index) => (
+            <tr key={`${isGlobal ? 'global' : 'local'}-${index}`}>
+              <td className={`rank-cell ${index < 3 ? 'top-rank' : ''}`}>
+                {index + 1}
+              </td>
+              <td className="player-cell">
+                <span className="nickname">{user.nickname}</span>
+                {user.tag && <span className="tag">#{user.tag}</span>}
+              </td>
+              <td className={`tier-cell tier-${user.tier}`}>
+                {user.tier !== 'UNKNOWN' ? `${user.tier} ${user.rank}` : 'Unranked'}
+              </td>
+              <td className="score-cell">{user.score} LP</td>
+              {!isGlobal && (
+                <td className="max-score-cell">
+                  <span className={`tier-${user.max_tier}`}>{user.max_tier} {user.max_rank}</span>
+                  <span className="max-lp"> {user.max_score} LP</span>
+                </td>
+              )}
+            </tr>
+          ))}
+          {data.length === 0 && (
+            <tr>
+              <td colSpan={isGlobal ? 4 : 5} className="empty-state">
+                {loading ? 'Fetching rankings...' : 'No rankings found.'}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <div className="container">
-      <h1>LoL Ranking Site</h1>
-      
-      <section className="registration">
-        <h2>Register / Update Ranking</h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Nickname (e.g. Hide on bush)"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Tag (e.g. KR1)"
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            required
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Fetching Data...' : 'Register'}
-          </button>
-        </form>
-      </section>
+      <header>
+        <h1>LoL Rankings</h1>
+        <p>Track the ladder. Prove your worth.</p>
+      </header>
 
-      <section className="rankings">
-        <h2>Ranking List</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Score (LP)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rankings.map((user, index) => (
-              <tr key={user.id}>
-                <td>{index + 1}</td>
-                <td>{user.nickname} <span className="tag">#{user.tag}</span></td>
-                <td>{user.score}</td>
-              </tr>
-            ))}
-            {rankings.length === 0 && (
-              <tr>
-                <td colSpan={3}>No rankings registered yet.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      <nav className="tab-nav">
+        <button 
+          className={activeTab === 'local' ? 'active' : ''} 
+          onClick={() => setActiveTab('local')}
+        >
+          Local Ranking
+        </button>
+        <button 
+          className={activeTab === 'global' ? 'active' : ''} 
+          onClick={() => setActiveTab('global')}
+        >
+          KR Top 50
+        </button>
+        <button 
+          className={activeTab === 'update' ? 'active' : ''} 
+          onClick={() => setActiveTab('update')}
+        >
+          Update My Rank
+        </button>
+      </nav>
+      
+      {activeTab === 'update' && (
+        <section className="registration animate-in">
+          <h2>Update Summoner</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label htmlFor="nickname">Riot ID</label>
+              <input
+                id="nickname"
+                type="text"
+                placeholder="e.g. Hide on bush"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                required
+              />
+            </div>
+            <div className="input-group">
+              <label htmlFor="tag">Tagline</label>
+              <input
+                id="tag"
+                type="text"
+                placeholder="e.g. KR1"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Scouting...' : 'Search'}
+            </button>
+          </form>
+        </section>
+      )}
+
+      {activeTab === 'local' && (
+        <section className="rankings animate-in">
+          <h2>Local Leaderboard</h2>
+          {renderRankingTable(localRankings, false)}
+        </section>
+      )}
+
+      {activeTab === 'global' && (
+        <section className="rankings animate-in">
+          <h2>KR Server Top 50</h2>
+          {renderRankingTable(globalRankings, true)}
+        </section>
+      )}
     </div>
   )
 }
