@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, timedelta, timezone
 
 from . import models, schemas, database, riot_api
 from .database import engine, get_db
@@ -65,16 +66,26 @@ def get_global_rankings():
 
 @app.post("/users", response_model=schemas.User)
 def create_or_update_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Fetch score, tier, and rank from Riot API
-    score, tier, rank = riot_api.get_summoner_lp(user.nickname, user.tag)
-    current_total = calculate_total_score(tier, rank, score)
-
     # Check if user already exists
     db_user = db.query(models.User).filter(
         models.User.nickname == user.nickname, 
         models.User.tag == user.tag
     ).first()
     
+    # Enforce 5-minute cooldown for updates
+    if db_user and db_user.last_updated:
+        now = datetime.now(timezone.utc)
+        last_updated = db_user.last_updated
+        if last_updated.tzinfo is None:
+            last_updated = last_updated.replace(tzinfo=timezone.utc)
+            
+        if now - last_updated < timedelta(minutes=5):
+            return db_user
+
+    # Fetch score, tier, and rank from Riot API
+    score, tier, rank = riot_api.get_summoner_lp(user.nickname, user.tag)
+    current_total = calculate_total_score(tier, rank, score)
+
     if db_user:
         # Calculate existing max total score
         max_total = calculate_total_score(db_user.max_tier, db_user.max_rank, db_user.max_score)
@@ -90,6 +101,8 @@ def create_or_update_user(user: schemas.UserCreate, db: Session = Depends(get_db
             db_user.max_tier = tier
             db_user.max_rank = rank
             
+        # Explicitly update last_updated
+        db_user.last_updated = datetime.now(timezone.utc)
         db.commit()
         db.refresh(db_user)
         return db_user
@@ -103,7 +116,8 @@ def create_or_update_user(user: schemas.UserCreate, db: Session = Depends(get_db
             tier=tier,
             rank=rank,
             max_tier=tier,
-            max_rank=rank
+            max_rank=rank,
+            last_updated=datetime.now(timezone.utc)
         )
         db.add(new_user)
         db.commit()

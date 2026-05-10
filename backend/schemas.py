@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
 
 class UserBase(BaseModel):
     nickname: str
@@ -9,6 +11,7 @@ class UserBase(BaseModel):
     rank: str = ""
     max_tier: str = "UNKNOWN"
     max_rank: str = ""
+    last_updated: Optional[datetime] = None
 
 class UserCreate(BaseModel):
     nickname: str

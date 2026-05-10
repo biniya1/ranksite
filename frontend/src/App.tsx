@@ -11,9 +11,89 @@ interface User {
   rank: string;
   max_tier: string;
   max_rank: string;
+  last_updated?: string;
 }
 
 type Tab = 'local' | 'global' | 'update';
+
+const RenewButton = ({ user, onUpdate, apiUrl }: { user: User, onUpdate: () => void, apiUrl: string }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (!user.last_updated) {
+      setTimeLeft(0);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const lastUpdated = new Date(user.last_updated!).getTime();
+      const now = new Date().getTime();
+      const diff = 5 * 60 * 1000 - (now - lastUpdated);
+      return Math.max(0, Math.floor(diff / 1000));
+    };
+
+    const initialTime = calculateTimeLeft();
+    setTimeLeft(initialTime);
+
+    if (initialTime > 0) {
+      const timer = setInterval(() => {
+        const remaining = calculateTimeLeft();
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+          clearInterval(timer);
+        }
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [user.last_updated]);
+
+  const handleRenew = async () => {
+    if (timeLeft > 0 || isUpdating) return;
+    setIsUpdating(true);
+    
+    try {
+      const response = await fetch(`${apiUrl}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nickname: user.nickname,
+          tag: user.tag,
+        }),
+      });
+
+      if (response.ok) {
+        onUpdate();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.detail || 'Failed to renew record'}`);
+      }
+    } catch (error) {
+      console.error('Failed to renew record:', error);
+      alert('Failed to connect to backend.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <button 
+      className={`renew-btn ${timeLeft > 0 ? 'cooldown' : ''}`} 
+      disabled={timeLeft > 0 || isUpdating}
+      onClick={handleRenew}
+    >
+      {isUpdating ? '갱신 중...' : timeLeft > 0 ? formatTime(timeLeft) : '전적 갱신'}
+    </button>
+  );
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('local');
@@ -104,6 +184,7 @@ function App() {
             <th>Tier</th>
             <th>Current LP</th>
             {!isGlobal && <th>Season High</th>}
+            {!isGlobal && <th>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -126,11 +207,16 @@ function App() {
                   <span className="max-lp"> {user.max_score} LP</span>
                 </td>
               )}
+              {!isGlobal && (
+                <td className="actions-cell">
+                  <RenewButton user={user} onUpdate={fetchLocalRankings} apiUrl={API_URL} />
+                </td>
+              )}
             </tr>
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={isGlobal ? 4 : 5} className="empty-state">
+              <td colSpan={isGlobal ? 4 : 6} className="empty-state">
                 {loading ? 'Fetching rankings...' : 'No rankings found.'}
               </td>
             </tr>
