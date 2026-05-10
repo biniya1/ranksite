@@ -194,8 +194,10 @@ function App() {
                 {index + 1}
               </td>
               <td className="player-cell">
-                <span className="nickname">{user.nickname}</span>
-                {user.tag && <span className="tag">#{user.tag}</span>}
+                <div className="player-info">
+                  <span className="nickname">{user.nickname}</span>
+                  {user.tag && <span className="tag">#{user.tag}</span>}
+                </div>
               </td>
               <td className={`tier-cell tier-${user.tier}`}>
                 {user.tier !== 'UNKNOWN' ? `${user.tier} ${user.rank}` : 'Unranked'}

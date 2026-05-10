@@ -17,13 +17,14 @@ def update_db_schema():
     db = database.SessionLocal()
     try:
         # SQLite와 PostgreSQL 모두 호환되는 방식으로 last_updated 컬럼 추가 시도
-        db.execute(text("ALTER TABLE users ADD COLUMN last_updated DATETIME DEFAULT CURRENT_TIMESTAMP"))
+        # PostgreSQL은 TIMESTAMP WITH TIME ZONE을 권장합니다.
+        db.execute(text("ALTER TABLE users ADD COLUMN last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"))
         db.commit()
         print("Schema updated: last_updated column added.")
     except Exception as e:
         db.rollback()
         # 이미 컬럼이 있는 경우 에러가 발생하므로 무시
-        print(f"Schema update skipped: {e}")
+        print(f"Schema update info: {e}")
     finally:
         db.close()
 
