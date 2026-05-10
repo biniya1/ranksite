@@ -90,7 +90,7 @@ const RenewButton = ({ user, onUpdate, apiUrl }: { user: User, onUpdate: () => v
       disabled={timeLeft > 0 || isUpdating}
       onClick={handleRenew}
     >
-      {isUpdating ? '갱신 중...' : timeLeft > 0 ? formatTime(timeLeft) : '전적 갱신'}
+      {isUpdating ? '갱신 중...' : timeLeft > 0 ? `${formatTime(timeLeft)} 남음` : '전적 갱신'}
     </button>
   );
 };

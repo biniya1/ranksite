@@ -310,14 +310,18 @@ tr:hover td {
 .renew-btn {
   padding: 8px 14px;
   height: auto;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-transform: none;
   background: rgba(200, 155, 60, 0.15);
   color: #c89b3c;
   border: 1px solid #c89b3c;
   border-radius: 4px;
   transition: all 0.2s ease;
-  min-width: 90px;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
 }
 
 .renew-btn:hover:not(:disabled) {
@@ -327,15 +331,16 @@ tr:hover td {
 }
 
 .renew-btn.cooldown {
-  background: rgba(107, 99, 117, 0.1);
+  background: #1a1c21;
   color: #6b6375;
   border-color: #3c3c41;
-  cursor: default;
+  cursor: not-allowed;
   transform: none;
+  opacity: 0.8;
 }
 
 .renew-btn.cooldown:hover {
-  background: rgba(107, 99, 117, 0.1);
+  background: #1a1c21;
   box-shadow: none;
 }
 
